@@ -275,19 +275,36 @@
             });
 
             // ve cac dong trong bang
-            mangDuLieu.forEach(item => {
+            mangDuLieu.forEach((item, chiSo) => {
                 const soLuongConLai = item.soLuongNhap - item.tongDaXuat;
                 const theTr = document.createElement('tr');
 
                 let htmlCotXuat = '';
                 let htmlCotThaoTac = '';
 
+                // kiem tra xem co lo hang nao cu hon ma chua xuat het khong
+                let coHangCuChuaXuat = false;
+                for (let i = 0; i < chiSo; i++) {
+                    if (mangDuLieu[i].tenHang === item.tenHang && (mangDuLieu[i].soLuongNhap - mangDuLieu[i].tongDaXuat) > 0) {
+                        coHangCuChuaXuat = true;
+                        break;
+                    }
+                }
+
                 // xu ly hien thi cot xuat va thao tac dua theo so luong con lai
                 if (soLuongConLai > 0) {
-                    htmlCotXuat = `
-                        <input type="number" id="slXuat_${item.id}" class="export-input" min="1" max="${soLuongConLai}" placeholder="SL">
-                        <button class="btn-export" onclick="xuLyXuatHang('${item.id}', ${item.tongDaXuat}, ${soLuongConLai})">Xuất</button>
-                    `;
+                    if (coHangCuChuaXuat) {
+                        // neu co lo cu hon chua xuat het thi khoa chuc nang xuat cua lo nay lai
+                        htmlCotXuat = `
+                            <input type="number" class="export-input" disabled placeholder="SL">
+                            <button class="btn-export" style="background-color: #6c757d; cursor: not-allowed;" disabled>Chờ lô cũ</button>
+                        `;
+                    } else {
+                        htmlCotXuat = `
+                            <input type="number" id="slXuat_${item.id}" class="export-input" min="1" max="${soLuongConLai}" placeholder="SL">
+                            <button class="btn-export" onclick="xuLyXuatHang('${item.id}', ${item.tongDaXuat}, ${soLuongConLai})">Xuất</button>
+                        `;
+                    }
                 } else {
                     htmlCotXuat = `<span>Đã xuất hết</span>`;
                     htmlCotThaoTac = `<button class="btn-delete" onclick="xuLyXoaDuLieu('${item.id}')">Xóa dữ liệu</button>`;
