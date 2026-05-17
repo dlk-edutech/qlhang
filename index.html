@@ -211,10 +211,27 @@
             }
         });
 
-        // ham dinh dang thoi gian theo chuan viet nam
+        // ham dinh dang thoi gian the hien tai theo chuan dd/mm/yyyy hh:mm:ss
         function layThoiGianHienTai() {
             const hienTai = new Date();
-            return hienTai.toLocaleDateString('vi-VN') + ' ' + hienTai.toLocaleTimeString('vi-VN');
+            const ngay = String(hienTai.getDate()).padStart(2, '0');
+            const thang = String(hienTai.getMonth() + 1).padStart(2, '0');
+            const nam = hienTai.getFullYear();
+            const gio = String(hienTai.getHours()).padStart(2, '0');
+            const phut = String(hienTai.getMinutes()).padStart(2, '0');
+            const giay = String(hienTai.getSeconds()).padStart(2, '0');
+            
+            return `${ngay}/${thang}/${nam} ${gio}:${phut}:${giay}`;
+        }
+
+        // ham chuyen doi ngay nhap tu yyyy-mm-dd sang dd/mm/yyyy
+        function hienThiNgayThang(chuoiNgay) {
+            if (!chuoiNgay) return '';
+            const mangNgay = chuoiNgay.split('-');
+            if (mangNgay.length === 3) {
+                return `${mangNgay[2]}/${mangNgay[1]}/${mangNgay[0]}`;
+            }
+            return chuoiNgay;
         }
 
         // xu ly su kien submit form nhap hang
@@ -222,7 +239,7 @@
             e.preventDefault();
             
             const tenHang = document.getElementById('tenHang').value.trim();
-            const ngayNhap = document.getElementById('ngayNhap').value;
+            const ngayNhap = document.getElementById('ngayNhap').value; // giu nguyen dinh dang yyyy-mm-dd de de sap xep
             const soLuongNhap = parseInt(document.getElementById('soLuongNhap').value);
             const donViTinh = document.getElementById('donViTinh').value.trim();
             const tongDaXuat = 0;
@@ -312,7 +329,7 @@
 
                 theTr.innerHTML = `
                     <td>${item.tenHang}</td>
-                    <td>${item.ngayNhap}</td>
+                    <td>${hienThiNgayThang(item.ngayNhap)}</td>
                     <td>${item.soLuongNhap}</td>
                     <td>${item.donViTinh}</td>
                     <td>${htmlCotXuat}</td>
