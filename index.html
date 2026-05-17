@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Xuất Nhập Hàng</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+        }
+        h2 {
+            color: #333;
+        }
+        .form-container, .login-container {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            text-align: center;
+        }
+        .login-container h2 {
+            margin-top: 0;
+        }
+        input[type="text"], input[type="date"], input[type="number"], input[type="password"] {
+            padding: 8px;
+            margin: 5px 5px 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .login-container input {
+            width: 80%;
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 9px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .btn-export {
+            background-color: #007bff;
+        }
+        .btn-export:hover {
+            background-color: #0069d9;
+        }
+        .btn-delete {
+            background-color: #dc3545;
+        }
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        .top-bar {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+        }
+        .export-input {
+            width: 70px;
+        }
+    </style>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+    <div id="khuVucDangNhap" class="login-container">
+        <h2>Đăng Nhập Quản Lý</h2>
+        <form id="formDangNhap">
+            <input type="password" id="matKhauNhap" placeholder="Nhập mật khẩu" required>
+            <br>
+            <button type="submit">Đăng nhập</button>
+        </form>
+    </div>
+
+    <div id="khuVucUngDung" style="display: none;">
+        <div class="top-bar">
+            <button id="btnDoiMatKhau" class="btn-warning">Đổi mật khẩu</button>
+        </div>
+
+        <h2>Chức Năng Nhập Hàng</h2>
+        <div class="form-container">
+            <form id="formNhapHang">
+                <input type="text" id="tenHang" list="danhSachGoiY" placeholder="Tên mặt hàng" required autocomplete="off">
+                <datalist id="danhSachGoiY"></datalist>
+                
+                <input type="date" id="ngayNhap" required>
+                <input type="number" id="soLuongNhap" placeholder="Số lượng nhập" required min="1">
+                <input type="text" id="donViTinh" placeholder="Đơn vị tính" required>
+                <button type="submit">Nhập hàng</button>
+            </form>
+        </div>
+
+        <h2>Danh Sách Xuất Nhập Hàng</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tên mặt hàng</th>
+                    <th>Ngày nhập hàng</th>
+                    <th>Số lượng nhập</th>
+                    <th>Đơn vị tính</th>
+                    <th>Số lượng xuất</th>
+                    <th>Tổng đã xuất</th>
+                    <th>Còn lại</th>
+                    <th>Ngày cập nhật</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="phanBodyBang">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // thay the bang thong tin firebase cua ban
+        const cauHinhFirebase = {
+            apiKey: "API_KEY_CUA_BAN",
+            authDomain: "PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://qlhang-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "PROJECT_ID",
+            storageBucket: "PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID"
+        };
+
+        // khoi tao firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(cauHinhFirebase);
+        }
+        const coSoDuLieu = firebase.database();
+
+        // cac the dom quan ly dang nhap
+        const khuVucDangNhap = document.getElementById('khuVucDangNhap');
+        const khuVucUngDung = document.getElementById('khuVucUngDung');
+        const formDangNhap = document.getElementById('formDangNhap');
+        const matKhauNhap = document.getElementById('matKhauNhap');
+        const btnDoiMatKhau = document.getElementById('btnDoiMatKhau');
+
+        // cac the dom quan ly hang hoa
+        const formNhapHang = document.getElementById('formNhapHang');
+        const phanBodyBang = document.getElementById('phanBodyBang');
+        const theDatalist = document.getElementById('danhSachGoiY');
+
+        // logic dang nhap va doi mat khau
+        let matKhauHienTai = "1111"; // mac dinh neu chua co du lieu
+        
+        // lay mat khau tu firebase
+        coSoDuLieu.ref('adminData/password').on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                matKhauHienTai = snapshot.val();
+            } else {
+                // tao mat khau mac dinh tren firebase neu chua co
+                coSoDuLieu.ref('adminData/password').set("1111");
+                matKhauHienTai = "1111";
+            }
+        });
+
+        // xu ly dang nhap
+        formDangNhap.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const mk = matKhauNhap.value;
+            if (mk === matKhauHienTai) {
+                khuVucDangNhap.style.display = 'none';
+                khuVucUngDung.style.display = 'block';
+                matKhauNhap.value = ''; // xoa trang o nhap
+            } else {
+                alert('Mật khẩu không đúng!');
+            }
+        });
+
+        // xu ly doi mat khau
+        btnDoiMatKhau.addEventListener('click', () => {
+            const mkMoi = prompt('Nhập mật khẩu mới:');
+            if (mkMoi && mkMoi.trim() !== '') {
+                coSoDuLieu.ref('adminData/password').set(mkMoi.trim()).then(() => {
+                    alert('Đổi mật khẩu thành công!');
+                });
+            }
+        });
+
+        // ham dinh dang thoi gian theo chuan viet nam
+        function layThoiGianHienTai() {
+            const hienTai = new Date();
+            return hienTai.toLocaleDateString('vi-VN') + ' ' + hienTai.toLocaleTimeString('vi-VN');
+        }
+
+        // xu ly su kien submit form nhap hang
+        formNhapHang.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const tenHang = document.getElementById('tenHang').value.trim();
+            const ngayNhap = document.getElementById('ngayNhap').value;
+            const soLuongNhap = parseInt(document.getElementById('soLuongNhap').value);
+            const donViTinh = document.getElementById('donViTinh').value.trim();
+            const tongDaXuat = 0;
+            const ngayCapNhat = layThoiGianHienTai();
+
+            // luu vao firebase
+            coSoDuLieu.ref('inventoryList').push({
+                tenHang: tenHang,
+                ngayNhap: ngayNhap,
+                soLuongNhap: soLuongNhap,
+                donViTinh: donViTinh,
+                tongDaXuat: tongDaXuat,
+                ngayCapNhat: ngayCapNhat
+            });
+
+            formNhapHang.reset();
+        });
+
+        // lay du lieu de render bang va cap nhat datalist
+        coSoDuLieu.ref('inventoryList').on('value', (snapshot) => {
+            phanBodyBang.innerHTML = '';
+            theDatalist.innerHTML = ''; // xoa du lieu goi y cu
+            
+            const duLieu = snapshot.val();
+            if (!duLieu) return;
+
+            const mangDuLieu = [];
+            const tapHopTen = new Set(); // set dung de loc ten trung lap
+
+            // chuyen object thanh mang
+            for (let id in duLieu) {
+                mangDuLieu.push({ id: id, ...duLieu[id] });
+                tapHopTen.add(duLieu[id].tenHang); // them vao set
+            }
+
+            // cap nhat the datalist de chon ten mat hang
+            tapHopTen.forEach(ten => {
+                const theOption = document.createElement('option');
+                theOption.value = ten;
+                theDatalist.appendChild(theOption);
+            });
+
+            // sap xep mang: theo ten truoc, neu trung ten thi theo ngay nhap
+            mangDuLieu.sort((a, b) => {
+                const soSanhTen = a.tenHang.localeCompare(b.tenHang);
+                if (soSanhTen !== 0) {
+                    return soSanhTen;
+                }
+                return new Date(a.ngayNhap) - new Date(b.ngayNhap);
+            });
+
+            // ve cac dong trong bang
+            mangDuLieu.forEach(item => {
+                const soLuongConLai = item.soLuongNhap - item.tongDaXuat;
+                const theTr = document.createElement('tr');
+
+                let htmlCotXuat = '';
+                let htmlCotThaoTac = '';
+
+                // xu ly hien thi cot xuat va thao tac dua theo so luong con lai
+                if (soLuongConLai > 0) {
+                    htmlCotXuat = `
+                        <input type="number" id="slXuat_${item.id}" class="export-input" min="1" max="${soLuongConLai}" placeholder="SL">
+                        <button class="btn-export" onclick="xuLyXuatHang('${item.id}', ${item.tongDaXuat}, ${soLuongConLai})">Xuất</button>
+                    `;
+                } else {
+                    htmlCotXuat = `<span>Đã xuất hết</span>`;
+                    htmlCotThaoTac = `<button class="btn-delete" onclick="xuLyXoaDuLieu('${item.id}')">Xóa dữ liệu</button>`;
+                }
+
+                theTr.innerHTML = `
+                    <td>${item.tenHang}</td>
+                    <td>${item.ngayNhap}</td>
+                    <td>${item.soLuongNhap}</td>
+                    <td>${item.donViTinh}</td>
+                    <td>${htmlCotXuat}</td>
+                    <td>${item.tongDaXuat}</td>
+                    <td>${soLuongConLai}</td>
+                    <td>${item.ngayCapNhat}</td>
+                    <td>${htmlCotThaoTac}</td>
+                `;
+                
+                phanBodyBang.appendChild(theTr);
+            });
+        });
+
+        // ham cap nhat so luong xuat
+        window.xuLyXuatHang = function(id, tongDaXuatHienTai, soLuongConHienTai) {
+            const oNhapXuat = document.getElementById(`slXuat_${id}`);
+            const soLuongMuonXuat = parseInt(oNhapXuat.value);
+
+            if (!soLuongMuonXuat || soLuongMuonXuat <= 0 || soLuongMuonXuat > soLuongConHienTai) {
+                alert('Số lượng xuất không hợp lệ!');
+                return;
+            }
+
+            const tongXuatMoi = tongDaXuatHienTai + soLuongMuonXuat;
+            
+            coSoDuLieu.ref('inventoryList/' + id).update({
+                tongDaXuat: tongXuatMoi,
+                ngayCapNhat: layThoiGianHienTai()
+            });
+        };
+
+        // ham xoa du lieu khi het hang
+        window.xuLyXoaDuLieu = function(id) {
+            if (confirm('Xóa dữ liệu mặt hàng này cho gọn?')) {
+                coSoDuLieu.ref('inventoryList/' + id).remove();
+            }
+        };
+    </script>
+</body>
+</html>
